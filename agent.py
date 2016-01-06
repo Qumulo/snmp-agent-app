@@ -4,9 +4,12 @@ from pysnmp.entity.rfc3413 import cmdrsp, context, ntforg
 from pysnmp.carrier.asynsock.dgram import udp
 from pysnmp.smi import builder
 
+from config import Config
 import threading
 import collections
 import time
+
+from qumulo_client import QumuloClient
 
 #can be useful
 debug.setLogger(debug.Debug('all'))
@@ -157,13 +160,21 @@ class Worker(threading.Thread):
             self._agent.sendTrap()
 
 if __name__ == '__main__':
-    mib = Mib()
-    objects = [MibObject('MY-MIB', 'testDescription', mib.getTestDescription),
-               MibObject('MY-MIB', 'testCount', mib.getTestCount)]
-    agent = SNMPAgent(objects)
-    agent.setTrapReceiver('192.168.1.14', 'traps')
-    Worker(agent, mib).start()
-    try:
-        agent.serve_forever()
-    except KeyboardInterrupt:
-        print "Shutting down"
+
+    # see if we can read config
+    f = file('snmp_agent.cfg')
+    cfg = Config(f)
+
+    for entry in cfg.clusters:
+        import ipdb; ipdb.set_trace()
+
+    # mib = Mib()
+    # objects = [MibObject('MY-MIB', 'testDescription', mib.getTestDescription),
+    #            MibObject('MY-MIB', 'testCount', mib.getTestCount)]
+    # agent = SNMPAgent(objects)
+    # agent.setTrapReceiver('10.116.204.58', 'traps')
+    # Worker(agent, mib).start()
+    # try:
+    #     agent.serve_forever()
+    # except KeyboardInterrupt:
+    #     print "Shutting down"
