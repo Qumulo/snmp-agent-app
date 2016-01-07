@@ -4,15 +4,16 @@ from pysnmp.entity.rfc3413 import cmdrsp, context, ntforg
 from pysnmp.carrier.asynsock.dgram import udp
 from pysnmp.smi import builder
 
-from config import Config
-import threading
 import collections
+from config import Config
+import os
+import threading
 import time
 
 from qumulo_client import QumuloClient
 
 #can be useful
-debug.setLogger(debug.Debug('all'))
+# debug.setLogger(debug.Debug('all'))
 
 MibObject = collections.namedtuple('MibObject', ['mibName',
                                    'objectType', 'valueFunc'])
@@ -99,7 +100,7 @@ class SNMPAgent(object):
             mibBuilder.exportSymbols(mibObject.mibName,
                                      **instanceDict)
 
-        # tell pysnmp to respotd to get, getnext, and getbulk
+        # tell pysnmp to respond to get, getnext, and getbulk
         cmdrsp.GetCommandResponder(self._snmpEngine, self._snmpContext)
         cmdrsp.NextCommandResponder(self._snmpEngine, self._snmpContext)
         cmdrsp.BulkCommandResponder(self._snmpEngine, self._snmpContext)
@@ -147,10 +148,13 @@ class Worker(threading.Thread):
     and sending traps
     """
 
-    def __init__(self, agent, mib):
+    def __init__(self, agent, mib, cfg):
         threading.Thread.__init__(self)
         self._agent = agent
         self._mib = mib
+        self._cfg = cfg
+        self.rest_user = os.getenv('SNMP_AGENT_REST_USER', 'admin')
+        self.rest_pwd = os.getenv('SNMP_AGENT_REST_PWD', 'admin')
         self.setDaemon(True)
 
     def run(self):
@@ -165,16 +169,16 @@ if __name__ == '__main__':
     f = file('snmp_agent.cfg')
     cfg = Config(f)
 
-    for entry in cfg.clusters:
-        import ipdb; ipdb.set_trace()
 
-    # mib = Mib()
-    # objects = [MibObject('MY-MIB', 'testDescription', mib.getTestDescription),
-    #            MibObject('MY-MIB', 'testCount', mib.getTestCount)]
-    # agent = SNMPAgent(objects)
-    # agent.setTrapReceiver('10.116.204.58', 'traps')
-    # Worker(agent, mib).start()
-    # try:
-    #     agent.serve_forever()
-    # except KeyboardInterrupt:
-    #     print "Shutting down"
+
+    mib = Mib()
+    objects = [MibObject('MY-MIB', 'testDescription', mib.getTestDescription),
+                MibObject('MY-MIB', 'testCount', mib.getTestCount)]
+    agent = SNMPAgent(objects)
+    agent.setTrapReceiver(cfg.snmp_trap_receiver, 'traps')
+
+    Worker(agent, mib, cfg).start()
+    try:
+        agent.serve_forever()
+    except KeyboardInterrupt:
+         print "Shutting down"

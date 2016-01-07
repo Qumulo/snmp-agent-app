@@ -1,7 +1,7 @@
 #
 # PySNMP MIB module MY-MIB (http://pysnmp.sf.net)
-# ASN.1 source file:///Users/mmurray/projects/qumulo/samples/snmp/MY-MIB
-# Produced by pysmi-0.0.6 at Mon Jan  4 13:50:24 2016
+# ASN.1 source file:///Users/mmurray/projects/qumulo/samples/snmp_agent/MY-MIB
+# Produced by pysmi-0.0.6 at Wed Jan  6 11:03:28 2016
 # On host mmurrayMBP platform Darwin version 14.5.0 by user mmurray
 # Using Python version 2.7.10 (default, Jun  1 2015, 09:44:56) 
 #
