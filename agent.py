@@ -157,11 +157,26 @@ class Worker(threading.Thread):
         self.rest_pwd = os.getenv('SNMP_AGENT_REST_PWD', 'admin')
         self.setDaemon(True)
 
+        self.client = QumuloClient(cfg.clusters[0]) # only one cluster for now
+        self.notified_offline = False
+
     def run(self):
         while True:
-            time.sleep(3)
+            time.sleep(5)
             self._mib.setTestCount(mib.getTestCount()+1)
-            self._agent.sendTrap()
+            self.client.get_cluster_state()
+            if len(self.client.offline_nodes) > 0:
+                self.notified_offline = True
+                print "There are currently " + str(len(self.client.offline_nodes)) + " nodes offline:"
+
+                for n in self.client.offline_nodes:
+                    print "\tNode " + n["node_name"] + " is currently offline."
+
+                self._agent.sendTrap()
+            else:
+                if self.notified_offline == True:
+                    self.notified_offline = False
+                    print "All nodes back online."
 
 if __name__ == '__main__':
 
