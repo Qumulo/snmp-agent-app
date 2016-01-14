@@ -1,6 +1,5 @@
-import errno
+import time
 import os
-from socket import error as socket_error
 import sys
 import qumulo.lib.auth
 import qumulo.lib.request
@@ -53,11 +52,8 @@ class QumuloClient(object):
                     retry = True
                 else:
                     retry = False
-            except socket_error as serr:
-                if serr.errno != errno.ECONNREFUSED:
-                    raise serr
-                else:
-                    retry = True
+            except Exception, excpt:
+                retry = True
 
             if retry:
                 attempt += 1

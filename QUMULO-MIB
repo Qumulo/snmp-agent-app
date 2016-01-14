@@ -1,11 +1,11 @@
-MY-MIB DEFINITIONS ::= BEGIN
+QUMULO-MIB DEFINITIONS ::= BEGIN
 
 IMPORTS
         OBJECT-TYPE, Integer32, NOTIFICATION-TYPE, enterprises
                      FROM SNMPv2-SMI
 ;
 
-myCompany       OBJECT IDENTIFIER ::= {enterprises 43}
+myCompany       OBJECT IDENTIFIER ::= {enterprises 47017 }
 
 testCount OBJECT-TYPE
     SYNTAX Integer32

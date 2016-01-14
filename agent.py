@@ -131,7 +131,7 @@ class SNMPAgent(object):
         errorIndication = ntfOrg.sendNotification(
             self._snmpEngine,
             'test-notification',
-            ('MY-MIB', 'nodeDownTrap'),
+            ('QUMULO-MIB', 'nodeDownTrap'),
             ())
 
 
@@ -181,7 +181,7 @@ class Worker(threading.Thread):
         self.client.get_drive_states()
         if len(self.client.dead_drives) > 0:
             self.notified_dead_drives = True
-            print "There are currently " + str(len(self.client.dead_drives)) + " nodes offline:"
+            print "There are currently " + str(len(self.client.dead_drives)) + " drives offline:"
 
             for d in self.client.dead_drives:
                 print "\t" + d["disk_type"] + " Drive" + d["id"] + " is dead."
@@ -205,11 +205,9 @@ if __name__ == '__main__':
     f = file('snmp_agent.cfg')
     cfg = Config(f)
 
-
-
     mib = Mib()
-    objects = [MibObject('MY-MIB', 'testDescription', mib.getTestDescription),
-                MibObject('MY-MIB', 'testCount', mib.getTestCount)]
+    objects = [MibObject('QUMULO-MIB', 'testDescription', mib.getTestDescription),
+                MibObject('QUMULO-MIB', 'testCount', mib.getTestCount)]
     agent = SNMPAgent(objects)
     agent.setTrapReceiver(cfg.snmp_trap_receiver, 'traps')
 
