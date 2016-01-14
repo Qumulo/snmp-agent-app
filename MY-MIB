@@ -5,7 +5,7 @@ IMPORTS
                      FROM SNMPv2-SMI
 ;
 
-myCompany       OBJECT IDENTIFIER ::= {enterprises 42}
+myCompany       OBJECT IDENTIFIER ::= {enterprises 43}
 
 testCount OBJECT-TYPE
     SYNTAX Integer32
@@ -21,9 +21,22 @@ testDescription OBJECT-TYPE
     DESCRIPTION "My description of something"
     ::= {myCompany 2}
 
-testTrap NOTIFICATION-TYPE
+nodeDownTrap NOTIFICATION-TYPE
     STATUS current
-    DESCRIPTION "My Test notification"
+    DESCRIPTION "Cluster Node Down Notification"
     ::= {myCompany 3}
+
+nodesClearTrap NOTIFICATION-TYPE
+    STATUS current
+    DESCRIPTION "Cluster All Nodes Up Notification"
+    ::= {myCompany 4}
+
+
+nodeName OBJECT-TYPE
+    SYNTAX DisplayString (SIZE (0..255))
+    ACCESS read-only
+    STATUS current
+    DESCRIPTION "Name of node for trap messages"
+    ::= {myCompany 5}
 
 END
