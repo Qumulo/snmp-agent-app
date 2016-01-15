@@ -40,12 +40,10 @@ class QumuloClient(object):
     def get_api_response(self, api_call):
 
         attempt = 0
-        resp_obj = None
+        response_object = None
         retry = True
-        max_attempts = 10
-        response = None
 
-        while retry and (attempt <= max_attempts):
+        while retry and (attempt <= 10):
             try:
                 response_object = api_call(self.connection, self.credentials)
                 if len(response_object) == 0:
@@ -57,7 +55,7 @@ class QumuloClient(object):
 
             if retry:
                 attempt += 1
-                time.sleep(5)
+                time.sleep(10)
 
         return response_object.data
 
