@@ -69,6 +69,15 @@ In the config file you specify the IP addresses of your cluster nodes and the IP
 
     snmp_trap_receiver: '10.0.0.11'
 
+** NOTE ** that credentials used for accessing the Qumulo cluster via API are determined by two environment variables
+that snmp_agent expects to find on start:
+
+SNMP_AGENT_REST_USER
+SNMP_AGENT_REST_PWD
+
+If these environment variables are not defined/found at startup, snmp_agent will use 'admin'/'admin' for credentials.
+
+
 ### 5. Testing the Agent
 
 After configuring snmp_agent per above, I test the agent in the following way (there are certainly other ways, but 
