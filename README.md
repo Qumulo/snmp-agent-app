@@ -72,8 +72,8 @@ In the config file you specify the IP addresses of your cluster nodes and the IP
 ** NOTE ** that credentials used for accessing the Qumulo cluster via API are determined by two environment variables
 that snmp_agent expects to find on start:
 
-SNMP_AGENT_REST_USER
-SNMP_AGENT_REST_PWD
+    SNMP_AGENT_REST_USER
+    SNMP_AGENT_REST_PWD
 
 If these environment variables are not defined/found at startup, snmp_agent will use 'admin'/'admin' for credentials.
 
