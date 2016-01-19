@@ -165,13 +165,13 @@ class Worker(threading.Thread):
     def check_nodes(self):
         self.client.get_cluster_state()
         if len(self.client.offline_nodes) > 0:
-            self.notified_offline = True
-            print "There are currently " + str(len(self.client.offline_nodes)) + " nodes offline:"
 
-            for n in self.client.offline_nodes:
-                print "\tNode " + n["node_name"] + " is currently offline."
-
-            self._agent.sendTrap()
+            if self.notified_offline == False:
+                print "There are currently " + str(len(self.client.offline_nodes)) + " nodes offline:"
+                for n in self.client.offline_nodes:
+                    print "\tNode " + n["node_name"] + " is currently offline."
+                self._agent.sendTrap()
+                self.notified_offline = True
         else:
             if self.notified_offline == True:
                 self.notified_offline = False
@@ -180,13 +180,15 @@ class Worker(threading.Thread):
     def check_drives(self):
         self.client.get_drive_states()
         if len(self.client.dead_drives) > 0:
-            self.notified_dead_drives = True
-            print "There are currently " + str(len(self.client.dead_drives)) + " drives offline:"
 
-            for d in self.client.dead_drives:
-                print "\t" + d["disk_type"] + " Drive" + d["id"] + " is dead."
+            if self.notified_dead_drives == False:
+                print "There are currently " + str(len(self.client.dead_drives)) + " drives offline:"
+                for d in self.client.dead_drives:
+                    print "\t" + d["disk_type"] + " Drive" + d["id"] + " is dead."
 
-            self._agent.sendTrap()
+                self._agent.sendTrap()
+                self.notified_dead_drives = True
+
         else:
             if self.notified_dead_drives == True:
                 self.notified_dead_drives = False
