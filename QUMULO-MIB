@@ -26,10 +26,15 @@ nodeDownTrap NOTIFICATION-TYPE
     DESCRIPTION "Cluster Node Down Notification"
     ::= {myCompany 3}
 
+driveFailureTrap NOTIFICATION-TYPE
+    STATUS current
+    DESCRIPTION "Cluster Node Down Notification"
+    ::= {myCompany 4}
+
 nodesClearTrap NOTIFICATION-TYPE
     STATUS current
-    DESCRIPTION "Cluster All Nodes Up Notification"
-    ::= {myCompany 4}
+    DESCRIPTION "Cluster Normal Notification"
+    ::= {myCompany 5}
 
 
 nodeName OBJECT-TYPE
@@ -37,6 +42,13 @@ nodeName OBJECT-TYPE
     ACCESS read-only
     STATUS current
     DESCRIPTION "Name of node for trap messages"
-    ::= {myCompany 5}
+    ::= {myCompany 6}
+
+driveId OBJECT-TYPE
+    SYNTAX DisplayString (SIZE (0..255))
+    ACCESS read-only
+    STATUS current
+    DESCRIPTION "Id of drive for trap messages"
+    ::= {myCompany 7}
 
 END

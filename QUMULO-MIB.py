@@ -1,7 +1,7 @@
 #
 # PySNMP MIB module QUMULO-MIB (http://pysnmp.sf.net)
 # ASN.1 source file:///Users/mmurray/projects/qumulo/samples/snmp_agent/QUMULO-MIB
-# Produced by pysmi-0.0.6 at Thu Jan 14 14:47:27 2016
+# Produced by pysmi-0.0.6 at Tue Jan 19 16:04:22 2016
 # On host mmurrayMBP platform Darwin version 14.5.0 by user mmurray
 # Using Python version 2.7.10 (default, Jun  1 2015, 09:44:56) 
 #
@@ -15,6 +15,8 @@ myCompany = MibIdentifier((1, 3, 6, 1, 4, 1, 47017))
 testCount = MibScalar((1, 3, 6, 1, 4, 1, 47017, 1), Integer32()).setMaxAccess("readonly")
 testDescription = MibScalar((1, 3, 6, 1, 4, 1, 47017, 2), OctetString()).setMaxAccess("readonly")
 nodeDownTrap = NotificationType((1, 3, 6, 1, 4, 1, 47017, 3)).setObjects(*())
-nodesClearTrap = NotificationType((1, 3, 6, 1, 4, 1, 47017, 4)).setObjects(*())
-nodeName = MibScalar((1, 3, 6, 1, 4, 1, 47017, 5), DisplayString().subtype(subtypeSpec=ValueSizeConstraint(0,255))).setMaxAccess("readonly")
-mibBuilder.exportSymbols("QUMULO-MIB", testCount=testCount, nodesClearTrap=nodesClearTrap, testDescription=testDescription, nodeDownTrap=nodeDownTrap, nodeName=nodeName, myCompany=myCompany)
+driveFailureTrap = NotificationType((1, 3, 6, 1, 4, 1, 47017, 4)).setObjects(*())
+nodesClearTrap = NotificationType((1, 3, 6, 1, 4, 1, 47017, 5)).setObjects(*())
+nodeName = MibScalar((1, 3, 6, 1, 4, 1, 47017, 6), DisplayString().subtype(subtypeSpec=ValueSizeConstraint(0,255))).setMaxAccess("readonly")
+driveId = MibScalar((1, 3, 6, 1, 4, 1, 47017, 7), DisplayString().subtype(subtypeSpec=ValueSizeConstraint(0,255))).setMaxAccess("readonly")
+mibBuilder.exportSymbols("QUMULO-MIB", testCount=testCount, nodesClearTrap=nodesClearTrap, driveFailureTrap=driveFailureTrap, testDescription=testDescription, nodeDownTrap=nodeDownTrap, driveId=driveId, nodeName=nodeName, myCompany=myCompany)

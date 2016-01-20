@@ -25,6 +25,8 @@ class Mib(object):
     def __init__(self):
         self._lock = threading.RLock()
         self._test_count = 0
+        self._nodes = []
+        self._drives = []
 
     def getTestDescription(self):
         return "My Description"
@@ -36,6 +38,22 @@ class Mib(object):
     def setTestCount(self, value):
         with self._lock:
             self._test_count = value
+
+    def getNodes(self):
+        with self._lock:
+            return self._nodes
+
+    def setNodes(self, value):
+        with self._lock:
+            self._nodes = value
+
+    def getDrives(self):
+        with self._lock:
+            return self._drives
+
+    def setDrives(self, value):
+        with self._lock:
+            self._drives = value
 
 
 def createVariable(SuperClass, getValue, *args):
@@ -124,15 +142,14 @@ class SNMPAgent(object):
             'all-my-managers', 'trap')
 
 
-    def sendTrap(self):
+    def sendTrap(self, notification, trap_name, var_binds):
         print "Sending trap"
         ntfOrg = ntforg.NotificationOriginator(self._snmpContext)
 
         errorIndication = ntfOrg.sendNotification(
             self._snmpEngine,
             'test-notification',
-            ('QUMULO-MIB', 'nodeDownTrap'),
-            ())
+            ( 'QUMULO-MIB', trap_name ), var_binds)
 
 
     def serve_forever(self):
@@ -170,12 +187,15 @@ class Worker(threading.Thread):
                 print "There are currently " + str(len(self.client.offline_nodes)) + " nodes offline:"
                 for n in self.client.offline_nodes:
                     print "\tNode " + n["node_name"] + " is currently offline."
-                self._agent.sendTrap()
+                self._agent.sendTrap("Node " + self.client.offline_nodes[0]["node_name"] + " is offline",
+                                     "nodeDownTrap",
+                                     ())
                 self.notified_offline = True
         else:
             if self.notified_offline == True:
                 self.notified_offline = False
                 print "All nodes back online."
+                self._agent.sendTrap("Cluster is back to normal", "nodesClearTrap", ())
 
     def check_drives(self):
         self.client.get_drive_states()
@@ -184,15 +204,18 @@ class Worker(threading.Thread):
             if self.notified_dead_drives == False:
                 print "There are currently " + str(len(self.client.dead_drives)) + " drives offline:"
                 for d in self.client.dead_drives:
-                    print "\t" + d["disk_type"] + " Drive" + d["id"] + " is dead."
+                    print "\t" + d["disk_type"] + " Drive" + d["id"] + " is offline."
 
-                self._agent.sendTrap()
+                self._agent.sendTrap("Drive " + self.client.dead_drives[0]["id"] + " is offline",
+                                     "driveFailureTrap",
+                                     ())
                 self.notified_dead_drives = True
 
         else:
             if self.notified_dead_drives == True:
                 self.notified_dead_drives = False
                 print "\tAll drives back to normal."
+                self._agent.sendTrap("Cluster is back to normal", "nodesClearTrap", ())
 
     def run(self):
         while True:
