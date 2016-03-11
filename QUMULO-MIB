@@ -1,11 +1,32 @@
 QUMULO-MIB DEFINITIONS ::= BEGIN
 
 IMPORTS
-        OBJECT-TYPE, Integer32, NOTIFICATION-TYPE, enterprises
+       MODULE-IDENTITY, OBJECT-TYPE, Integer32, NOTIFICATION-TYPE, enterprises
                      FROM SNMPv2-SMI
 ;
 
-myCompany       OBJECT IDENTIFIER ::= {enterprises 47017 }
+
+
+qumuloModule MODULE-IDENTITY
+    LAST-UPDATED "200406150000Z"
+    ORGANIZATION "www.qumulo.com"
+    CONTACT-INFO
+	 "postal:   Michael Murray
+                    1501 4th Ave, Ste 1600
+                    Seattle WA 98101
+
+          email:    mmurray@qumulo.com"
+    DESCRIPTION
+	"Qumulo MIB objects for SNMP agent module"
+    REVISION     "200406150000Z"
+    DESCRIPTION
+	"Corrected notification example definitions"
+    REVISION     "200202060000Z"
+    DESCRIPTION
+	"First draft"
+    ::= { 47017 2 }
+
+myCompany OBJECT IDENTIFIER ::= {enterprises 47017 }
 
 testCount OBJECT-TYPE
     SYNTAX Integer32
@@ -36,19 +57,42 @@ nodesClearTrap NOTIFICATION-TYPE
     DESCRIPTION "Cluster Normal Notification"
     ::= {myCompany 5}
 
-
-nodeName OBJECT-TYPE
-    SYNTAX DisplayString (SIZE (0..255))
-    ACCESS read-only
+clusterUnreachableTrap NOTIFICATION-TYPE
     STATUS current
-    DESCRIPTION "Name of node for trap messages"
+    DESCRIPTION "Cluster unreachable via REST API"
     ::= {myCompany 6}
 
+powerSupplyFailureTrap NOTIFICATION-TYPE
+    STATUS current
+    DESCRIPTION "Power supply failure Notification"
+    ::= {myCompany 7}
+
+nodeName OBJECT-TYPE
+    SYNTAX OCTET STRING
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION "Name of node for trap messages"
+    ::= {myCompany 8}
+
 driveId OBJECT-TYPE
-    SYNTAX DisplayString (SIZE (0..255))
-    ACCESS read-only
+    SYNTAX OCTET STRING
+    MAX-ACCESS read-only
     STATUS current
     DESCRIPTION "Id of drive for trap messages"
-    ::= {myCompany 7}
+    ::= {myCompany 9}
+
+clusterName OBJECT-TYPE
+    SYNTAX OCTET STRING
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION "Name of node for trap messages"
+    ::= {myCompany 10}
+
+powerSupplyId OBJECT-TYPE
+    SYNTAX OCTET STRING
+    MAX-ACCESS read-only
+    STATUS current
+    DESCRIPTION "ID of power supply for trap messages"
+    ::= {myCompany 11}
 
 END
