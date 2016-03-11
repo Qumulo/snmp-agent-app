@@ -103,4 +103,9 @@ an internal Qumulo testing tool to fail a drive on one of the four node VMs and 
 failure there may be other ways besides our internal tool to fail and restore the drive but I will look into alternatives
 and sharing them.
 
+### 6. Modifying the MIB / adding values etc.
+PySNMP needs a "pythonized" MIB.  To generate:
+
+mibdump.py  --destination-directory=. ./QUMULO-MIB
+
 

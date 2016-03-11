@@ -6,7 +6,7 @@ from pysnmp.smi import builder
 
 import collections
 from config import Config
-import os
+import re
 import threading
 import time
 
@@ -171,13 +171,12 @@ class Worker(threading.Thread):
         self._agent = agent
         self._mib = mib
         self._cfg = cfg
-        self.rest_user = os.getenv('SNMP_AGENT_REST_USER', 'admin')
-        self.rest_pwd = os.getenv('SNMP_AGENT_REST_PWD', 'admin')
         self.setDaemon(True)
 
         self.client = QumuloClient(cfg.clusters[0]) # only one cluster for now
         self.notified_offline = False
         self.notified_dead_drives = False
+        self.notified_power_supply_failure = False
 
     def check_nodes(self):
         self.client.get_cluster_state()
@@ -217,12 +216,55 @@ class Worker(threading.Thread):
                 print "\tAll drives back to normal."
                 self._agent.sendTrap("Cluster is back to normal", "nodesClearTrap", ())
 
+    def check_power(self):
+        power_state = self.client.get_power_state(self._cfg['clusters'][0].ipmi_server)
+
+        m = re.search("Failure", power_state[0])
+        if m:
+            if not self.notified_power_supply_failure:
+                print power_state[0]
+                self._agent.sendTrap(power_state[0], "powerSupplyFailureTrap", ())
+                self.notified_power_supply_failure = True
+        else:
+            if self.notified_power_supply_failure: # we're back to normal
+                self.notified_power_supply_failure = False
+                print "\tPower is back to normal back to normal."
+                self._agent.sendTrap("Cluster power is back to normal", "nodesClearTrap", ())
+
+    def check_memory(self):
+        memory_state = self.client.get_memory_state(self._cfg['clusters'][0].ipmi_server)
+        pass
+
+    def check_cluster_status(self):
+
+        # Check IPMI
+        if self._cfg.ipmi_support:
+            self.check_power()
+            self.check_memory()
+
+        if self.client.credentials != None:
+            if self.notified_offline == True: # we're baaack
+                print "All nodes back online."
+                self._agent.sendTrap("Cluster is back to normal", "nodesClearTrap", ())
+                self.notified_offline = False
+
+            self.check_nodes()
+            self.check_drives()
+        else: # we're offline
+            if self.notified_offline == False:
+                print "Error connecting to Qumulo Cluster REST Server"
+                self._agent.sendTrap("Error connecting to Qumulo Cluster REST Server",
+                                     "nodeDownTrap",
+                                     ())
+                self.notified_offline = True
+            else: # retry login
+                self.client.login()
+
     def run(self):
         while True:
             time.sleep(5)
             self._mib.setTestCount(mib.getTestCount()+1)
-            self.check_nodes()
-            self.check_drives()
+            self.check_cluster_status()
 
 if __name__ == '__main__':
 

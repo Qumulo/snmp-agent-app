@@ -1,6 +1,10 @@
 import time
 import os
+# subprocess is for shelling out to run ipmi commands
+import re
+import subprocess
 import sys
+
 import qumulo.lib.auth
 import qumulo.lib.request
 import qumulo.rest.fs as fs
@@ -13,6 +17,8 @@ class QumuloClient(object):
         self.nodes = cluster_cfg.nodes
         self.user = os.getenv('SNMP_AGENT_REST_USER', 'admin')
         self.password = os.getenv('SNMP_AGENT_REST_PWD', 'admin')
+        self.ipmi_user = os.getenv('SNMP_AGENT_IPMI_USER', 'ADMIN')
+        self.ipmi_password = os.getenv('SNMP_AGENT_IPMI_PWD', 'ADMIN')
         self.connection = None
         self.credentials = None
         self.cluster_state = None
@@ -32,9 +38,9 @@ class QumuloClient(object):
             self.credentials = qumulo.lib.auth.Credentials.\
                     from_login_response(login_results)
         except Exception, excpt:
-            print "Error connecting to the REST server: %s" % excpt
-            print __doc__
-            sys.exit(1)
+            # print "Error connecting to the REST server: %s" % excpt
+            # sys.exit(1)
+            pass
 
 
     def get_api_response(self, api_call):
@@ -67,5 +73,42 @@ class QumuloClient(object):
     def get_drive_states(self):
         self.drive_states = self.get_api_response(qumulo.rest.cluster.get_cluster_slots_status)
         self.dead_drives = [ d for d in self.drive_states if d['state'] == 'dead' ]
+
+    def get_power_state(self, ipmi_server):
+        '''
+        use ipmi to determine if any power supplies have failed.
+        @return:  TBD data structure
+        '''
+        ipmi_success = False
+        results = []
+
+        try:
+            ipmi_cmd = "ipmitool -H " + ipmi_server + " -U " + self.ipmi_user + " -P " + \
+                       self.ipmi_password + " sel elist"
+            ipmi_output = subprocess.check_output(ipmi_cmd.split(" "))
+            lines = ipmi_output.split("\n")
+
+            for line in lines:
+
+                m = re.search('Power Supply(.+?)Failure', line)
+                if m:
+                    results.append(m.group())
+
+        except:
+            results = [ "get_power_state: IPMI command exception." ]
+
+        sys.stdout.flush()
+        return results
+
+
+
+    def get_memory_state(self, ipmi_server):
+        '''
+        use ipmi to determine if any DIMMs have failed.
+        @return:  TBD data structure
+        '''
+        return []
+
+
 
 
