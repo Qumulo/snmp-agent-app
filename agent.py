@@ -243,15 +243,10 @@ class Worker(threading.Thread):
             self.check_memory()
 
         if self.client.credentials != None:
-            if self.notified_offline == True: # we're baaack
-                print "All nodes back online."
-                self._agent.sendTrap("Cluster is back to normal", "nodesClearTrap", ())
-                self.notified_offline = False
-
             self.check_nodes()
             self.check_drives()
         else: # we're offline
-            if self.notified_offline == False:
+            if not self.notified_offline:
                 print "Error connecting to Qumulo Cluster REST Server"
                 self._agent.sendTrap("Error connecting to Qumulo Cluster REST Server",
                                      "nodeDownTrap",
