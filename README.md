@@ -77,6 +77,12 @@ that snmp_agent expects to find on start:
 
 If these environment variables are not defined/found at startup, snmp_agent will use 'admin'/'admin' for credentials.
 
+In addition, if your configuration has email enabled for notifications, you will need to define
+environment vars for the email account and password to use to send mail:
+
+    SNMP_AGENT_EMAIL_ACCT
+    SNMP_AGENT_EMAIL_PWD
+
 
 ### 5. Testing the Agent
 
@@ -94,7 +100,10 @@ is using UDP for SNMP traffic) in the folder where snmp_agent is installed, as f
 3. I then start then agent (also using sudo, making sure I'm in a python 2.7 environment with all supporting packages
 installed via pip):
 
-    sudo python agent.py
+    sudo -E python agent.py
+    
+** NOTE that the -E is important so that the python app picks up your env vars for
+SNMP_AGENT_REST_USER and the others.
 
 4. To test the agent, I fail a node in a cluster and bring it back, and then fail a drive in a node and bring it back, 
 verifying that the appropriate traps are sent on node and drive failure and when they are restored.  For testing, I fail

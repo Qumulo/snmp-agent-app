@@ -16,9 +16,10 @@ class QumuloClient(object):
         self.port = cluster_cfg.port
         self.nodes = cluster_cfg.nodes
         self.user = os.getenv('SNMP_AGENT_REST_USER', 'admin')
-        self.password = os.getenv('SNMP_AGENT_REST_PWD', 'admin')
+        self.pwd = os.getenv('SNMP_AGENT_REST_PWD', 'admin')
         self.ipmi_user = os.getenv('SNMP_AGENT_IPMI_USER', 'ADMIN')
-        self.ipmi_password = os.getenv('SNMP_AGENT_IPMI_PWD', 'ADMIN')
+        self.ipmi_pwd = os.getenv('SNMP_AGENT_IPMI_PWD', 'ADMIN')
+
         self.connection = None
         self.credentials = None
         self.cluster_state = None
@@ -33,7 +34,7 @@ class QumuloClient(object):
             self.connection = qumulo.lib.request.Connection(\
                                 self.nodes[0], int(self.port))
             login_results, _ = qumulo.rest.auth.login(\
-                    self.connection, None, self.user, self.password)
+                    self.connection, None, self.user, self.pwd)
 
             self.credentials = qumulo.lib.auth.Credentials.\
                     from_login_response(login_results)
@@ -84,7 +85,7 @@ class QumuloClient(object):
 
         try:
             ipmi_cmd = "ipmitool -H " + ipmi_server + " -U " + self.ipmi_user + " -P " + \
-                       self.ipmi_password + " sel elist"
+                       self.ipmi_pwd + " sel elist"
             ipmi_output = subprocess.check_output(ipmi_cmd.split(" "))
             lines = ipmi_output.split("\n")
 
