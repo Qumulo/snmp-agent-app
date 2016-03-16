@@ -50,24 +50,48 @@ Edit **snmp_agent.config**
 
 In the config file you specify the IP addresses of your cluster nodes and the IP address of the NMS server for traps, like this
 
+    # we only support one cluster for starters...
     clusters:
-
     [
-        # qumulo-snmp
-        { port:8000,
-        
-          nodes: [ '10.0.0.181',
-          
-                   '10.0.0.182',
-                   
-                   '10.0.0.183',
-                   
-                   '10.0.0.184']}
-                   
+        {
+          port:8000
+          nodes: [ "10.20.219.64",
+                   "10.20.219.61",
+                   "10.20.219.63",
+                   "10.20.219.62"]
+        }
     ]
-    # Specify IP address of SNMP trap receiver
 
-    snmp_trap_receiver: '10.0.0.11'
+    # Specify IP address of SNMP trap receiver
+    snmp: {
+        enabled: True
+        snmp_trap_receiver: '10.20.217.205'
+    }
+
+    # If email is enabled, you will need to set
+    # environment variables where you are running the
+    # agent to specify the account and password to
+    # authorize email access:
+    #
+    #    SNMP_AGENT_EMAIL_ACCT
+    #    SNMP_AGENT_EMAIL_PWD
+    #
+    email: {
+        enabled: True
+        server: "smtp.gmail.com"
+        tls_port:587
+        ssl_port:465
+        address_from: "your_account_on@gmail.com"
+        address_to: "other_account_on@gmail.com"
+    }
+
+    # If your cluster has IPMI enabled and you have
+    # ipmicmd installed on the box running this agent,
+    # set this flag to true
+    ipmi: {
+        enabled: False
+        ipmi_server: ""
+    }
 
 ** NOTE ** that credentials used for accessing the Qumulo cluster via API are determined by two environment variables
 that snmp_agent expects to find on start:
