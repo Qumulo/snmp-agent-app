@@ -82,7 +82,10 @@ environment vars for the email account and password to use to send mail:
 
     SNMP_AGENT_EMAIL_ACCT
     SNMP_AGENT_EMAIL_PWD
-
+    
+** NOTE that if you are using Gmail (and potentially other services) you will need to
+allow less secure apps (credential as well as token-based) to access your email server
+as described here: http://goo.gl/RXkKGU
 
 ### 5. Testing the Agent
 
