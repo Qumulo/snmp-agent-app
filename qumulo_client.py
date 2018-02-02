@@ -104,7 +104,8 @@ class QumuloClient(object):
         try:
             ipmi_cmd = "ipmitool -H " + ipmi_server + " -U " + self.ipmi_user + " -P " + \
                        self.ipmi_pwd + " sel elist"
-            ipmi_output = subprocess.check_output(ipmi_cmd.split(" "))
+            ipmi_output = subprocess.check_output(ipmi_cmd.split(" "),
+                                                  stderr=subprocess.STDOUT)
             lines = ipmi_output.split("\n")
 
             PS = ['PS1', 'PS2']
