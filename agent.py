@@ -127,7 +127,6 @@ class SNMPAgent(object):
         cmdrsp.NextCommandResponder(self._snmpEngine, self._snmpContext)
         cmdrsp.BulkCommandResponder(self._snmpEngine, self._snmpContext)
 
-
     def setTrapReceiver(self, host, community):
         """Send traps to the host using community string community
         """
@@ -145,7 +144,6 @@ class SNMPAgent(object):
             self._snmpEngine, 'test-notification', 'my-filter',
             'all-my-managers', 'trap')
 
-
     def sendTrap(self, notification, trap_name, var_binds):
         ntfOrg = ntforg.NotificationOriginator(self._snmpContext)
 
@@ -153,7 +151,6 @@ class SNMPAgent(object):
             self._snmpEngine,
             'test-notification',
             ( 'QUMULO-MIB', trap_name ), var_binds)
-
 
     def serve_forever(self):
         print "Starting agent"
@@ -163,6 +160,7 @@ class SNMPAgent(object):
         except:
             self._snmpEngine.transportDispatcher.closeDispatcher()
             raise
+
 
 class Worker(threading.Thread):
     """Just to demonstrate updating the MIB
@@ -246,13 +244,13 @@ class Worker(threading.Thread):
                 self.notify("Qumulo Power Supply Normal", message, "nodesClearTrap")
                 self.notified_power_supply_failure[node_id][PS] = False
 
-    def notify(self, subject, message, snmp_trap_name = None):
+    def notify(self, subject, message, snmp_trap_name=None, snmp_var_binds=[]):
 
         print("NOTIFICATION: " + message)
 
         if self.snmp_enabled:
             print("Sending trap")
-            self._agent.sendTrap(message, snmp_trap_name, ())
+            self._agent.sendTrap(message, snmp_trap_name, snmp_var_binds)
 
         if self.email_enabled:
             print("Sending email")
