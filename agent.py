@@ -3,6 +3,7 @@ from pysnmp import debug
 from pysnmp.entity.rfc3413 import cmdrsp, context, ntforg
 from pysnmp.carrier.asynsock.dgram import udp
 from pysnmp.smi import builder
+from pysnmp.proto import rfc1902
 
 import collections
 from config import Config
@@ -233,8 +234,15 @@ class Worker(threading.Thread):
         # notify on every failed PS we find and set notified state to True
         for PS in power_states['FAIL']:
             if not self.notified_power_supply_failure[node_id][PS]:
-                message = PS + " in node " + str(node_id + 1) + " failed"
-                self.notify("Qumulo Power Supply Failure", message, "powerSupplyFailureTrap")
+                cluster_name = self._cfg.clusters[0].name
+                node_name = cluster_name + '-' + str(node_id + 1)
+                message = PS + " in " + node_name + " failed"
+                self.notify("Qumulo Power Supply Failure",
+                            message,
+                            "powerSupplyFailureTrap",
+                            [(rfc1902.ObjectName('1.3.6.1.4.1.47017.8'),
+                              rfc1902.OctetString(node_name))]
+                            )
                 self.notified_power_supply_failure[node_id][PS] = True
 
         # notify on every good PS we find and set those notified states to False
