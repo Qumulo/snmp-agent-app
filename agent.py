@@ -237,7 +237,8 @@ class Worker(threading.Thread):
                 cluster_name = self._cfg.clusters[0].name
                 node_name = cluster_name + '-' + str(node_id + 1)
                 message = PS + " in " + node_name + " failed"
-                self.notify("Qumulo Power Supply Failure",
+                subject = "[ALERT] Qumulo Power Supply Failure " + node_name
+                self.notify(subject,
                             message,
                             "powerSupplyFailureTrap",
                             [(rfc1902.ObjectName('1.3.6.1.4.1.47017.8'),
