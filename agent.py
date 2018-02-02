@@ -176,14 +176,16 @@ class Worker(threading.Thread):
         self._cfg = cfg
         self.setDaemon(True)
 
-        self.client = QumuloClient(cfg.clusters[0]) # only one cluster for now
+        self.client = QumuloClient(cfg.clusters[0])  # only one cluster for now
         self.notified_offline = False
         self.notified_dead_drives = False
-        self.notified_power_supply_failure = False
+        # Use an array of dictionaries to track per-node power supply states
+        self.notified_power_supply_failure = [{'PS1':False, 'PS2':False} for node in cfg.clusters[0].ipmi.ipmi_servers]
+        print self.notified_power_supply_failure
 
         self.snmp_enabled = cfg.snmp.enabled
         self.email_enabled = cfg.email.enabled
-        self.ipmi_enabled = cfg.ipmi.enabled
+        self.ipmi_enabled = cfg.clusters[0].ipmi.enabled
 
         if self.email_enabled:
            self.email_acct = os.getenv('SNMP_AGENT_EMAIL_ACCT')
@@ -225,18 +227,32 @@ class Worker(threading.Thread):
                 self.notified_dead_drives = False
                 self.notify("Qumulo Drives Back Online", "All nodes back online", "nodesClearTrap")
 
-    def check_power(self, ipmi_server):
-        power_state = self.client.get_power_state(self._cfg['clusters'][0].ipmi.ipmi_server)
+    def check_power(self, ipmi_server, node_id):
+        power_states = self.client.get_power_state(ipmi_server)
 
-        m = re.search("Failure", power_state[0])
-        if m:
-            if not self.notified_power_supply_failure:
-                self.notify("Qumulo Power Supply Failure", power_state[0], "powerSupplyFailureTrap")
-                self.notified_power_supply_failure = True
-        else:
-            if self.notified_power_supply_failure: # we're back to normal
-                self.notified_power_supply_failure = False
-                self.notify("Qumulo Cluster Back Online", "Qumulo Cluster power back to normal", "nodesClearTrap")
+        # notify on every failed supply we find and set appropriate notified states to True
+        for PS in power_states['FAIL']:
+            if not self.notified_power_supply_failure[node_id][PS]:
+                message = PS + " in node " + str(node_id + 1) + " failed"
+                self.notify("Qumulo Power Supply Failure", message, "powerSupplyFailureTrap")
+                self.notified_power_supply_failure[node_id][PS] = True
+
+        # notify on every good supply we find and set those notified states to False
+        for PS in power_states['GOOD']:
+            if self.notified_power_supply_failure[node_id][PS]:
+                message = PS + " in node " + node_id + " power back to normal"
+                self.notify("Qumulo Power Supply Normal", message, "nodesClearTrap")
+                self.notified_power_supply_failure[node_id][PS] = False
+
+        # m = re.search("Failure", power_state[0])
+        # if m:
+        #     if not self.notified_power_supply_failure:
+        #         self.notify("Qumulo Power Supply Failure", power_state[0], "powerSupplyFailureTrap")
+        #         self.notified_power_supply_failure = True
+        # else:
+        #     if self.notified_power_supply_failure: # we're back to normal
+        #         self.notified_power_supply_failure = False
+        #         self.notify("Qumulo Cluster Back Online", "Qumulo Cluster power back to normal", "nodesClearTrap")
 
     def notify(self, subject, message, snmp_trap_name = None):
 
@@ -254,9 +270,11 @@ class Worker(threading.Thread):
     def check_cluster_status(self):
 
         # Check IPMI
-        if self._cfg.ipmi.enabled:
-            ipmi_server = self._cfg['clusters'][0].ipmi.ipmi_server
-            self.check_power(ipmi_server, self._cfg.snmp.enabled, self._email.enabled)
+        if self._cfg.clusters[0].ipmi.enabled:
+            ipmi_servers = self._cfg.clusters[0].ipmi.ipmi_servers
+            print ipmi_servers
+            for ipmi_server in ipmi_servers:
+                self.check_power(ipmi_server, node_id=list(ipmi_servers).index(ipmi_server))
 
         if self.client.credentials != None:
             self.check_nodes()

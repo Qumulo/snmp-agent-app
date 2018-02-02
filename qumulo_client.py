@@ -81,7 +81,7 @@ class QumuloClient(object):
         @return:  TBD data structure
         '''
         ipmi_success = False
-        results = []
+        results = {'GOOD': ['PS1','PS2'], 'FAIL': []}
 
         try:
             ipmi_cmd = "ipmitool -H " + ipmi_server + " -U " + self.ipmi_user + " -P " + \
@@ -89,11 +89,30 @@ class QumuloClient(object):
             ipmi_output = subprocess.check_output(ipmi_cmd.split(" "))
             lines = ipmi_output.split("\n")
 
-            for line in lines:
-
-                m = re.search('Power Supply(.+?)Failure', line)
-                if m:
-                    results.append(m.group())
+            PS = ['PS1', 'PS2']
+            GOOD = []
+            FAIL = []
+            for line in reversed(lines):
+                m = re.search(
+                    'Power Supply (.+?) Status \| Failure detected \(\) \| (Asserted|Deasserted)',
+                    line)
+                if m and m.group(1) in PS:
+                    if m.group(2) == "Asserted":
+                        FAIL.append(m.group(1))
+                    elif m.group(2) == "Deasserted":
+                        GOOD.append(m.group(1))
+                    else:
+                        raise Exception(
+                            "Received abnormal Power Supply status from ipmitool")
+                    PS.remove(m.group(1))
+                if not PS:
+                    break
+            print "Good power supplies: " + str(GOOD)
+            print "Failed power supplies: " + str(FAIL)
+            if GOOD:
+                results['GOOD'] = GOOD
+            if FAIL:
+                results['FAIL'] = FAIL
 
         except:
             results = [ "get_power_state: IPMI command exception." ]
