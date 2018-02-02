@@ -31,18 +31,34 @@ class QumuloClient(object):
 
     def login(self):
         try:
-            self.connection = qumulo.lib.request.Connection(\
-                                self.nodes[0], int(self.port))
-            login_results, _ = qumulo.rest.auth.login(\
-                    self.connection, None, self.user, self.pwd)
-
-            self.credentials = qumulo.lib.auth.Credentials.\
-                    from_login_response(login_results)
+            self.get_credentials()
         except Exception, excpt:
-            # print "Error connecting to the REST server: %s" % excpt
-            # sys.exit(1)
-            pass
+            print "Problem connecting to the REST server: %s" % excpt
+            if 'certificate verify failed' not in str(excpt):
+                print "Fatal error, exiting..."
+                sys.exit(1)
+            else:
+                # Create an unverified ssl context, warn that we're doing it
+                print "Warning: Creating unverified HTTPS Context!"
+                import ssl
+                try:
+                    _create_unverified_https_context = ssl._create_unverified_context
+                except AttributeError:
+                    # Legacy Python that doesn't verify by default
+                    pass
+                else:
+                    # Handle envs that don't support HTTPS verification
+                    ssl._create_default_https_context = _create_unverified_https_context
 
+                self.get_credentials()
+
+    def get_credentials(self):
+        self.connection = qumulo.lib.request.Connection(
+            self.nodes[0], int(self.port))
+        login_results, _ = qumulo.rest.auth.login(
+            self.connection, None, self.user, self.pwd)
+
+        self.credentials = qumulo.lib.auth.Credentials.from_login_response(login_results)
 
     def get_api_response(self, api_call):
 
@@ -66,7 +82,6 @@ class QumuloClient(object):
 
         return response_object.data
 
-
     def get_cluster_state(self):
         self.cluster_state = self.get_api_response(qumulo.rest.cluster.list_nodes)
         self.offline_nodes = [ s for s in self.cluster_state if s['node_status'] == 'offline' ]
@@ -80,7 +95,10 @@ class QumuloClient(object):
         use ipmi to determine if any power supplies have failed.
         @return:  TBD data structure
         '''
-        ipmi_success = False
+        # TODO: Say something useful if ipmi doesn't work
+        # ipmi_success = False
+
+        # Assume both supplies are good unless sel elist tells us different
         results = {'GOOD': ['PS1','PS2'], 'FAIL': []}
 
         try:
@@ -103,32 +121,17 @@ class QumuloClient(object):
                         GOOD.append(m.group(1))
                     else:
                         raise Exception(
-                            "Received abnormal Power Supply status from ipmitool")
+                            "Received abnormal PS status from ipmitool")
                     PS.remove(m.group(1))
                 if not PS:
                     break
-            print "Good power supplies: " + str(GOOD)
-            print "Failed power supplies: " + str(FAIL)
             if GOOD:
                 results['GOOD'] = GOOD
             if FAIL:
                 results['FAIL'] = FAIL
 
-        except:
-            results = [ "get_power_state: IPMI command exception." ]
+        except Exception, e:
+            results = ["get_power_state: IPMI command exception: " + str(e)]
 
         sys.stdout.flush()
         return results
-
-
-
-    def get_memory_state(self, ipmi_server):
-        '''
-        use ipmi to determine if any DIMMs have failed.
-        @return:  TBD data structure
-        '''
-        return []
-
-
-
-
