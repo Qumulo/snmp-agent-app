@@ -9,6 +9,7 @@ import qumulo.lib.auth
 import qumulo.lib.request
 import qumulo.rest.fs as fs
 
+
 class QumuloClient(object):
     ''' class wrapper for REST API cmd so that we can new them up in tests '''
     def __init__(self, cluster_cfg):
@@ -136,3 +137,39 @@ class QumuloClient(object):
 
         sys.stdout.flush()
         return results
+
+
+def parse_sel(text):
+    lines = text.split('\n')
+    print lines
+    PS = {'PS1', 'PS2'}
+    GOOD = set()
+    FAIL = set()
+    # use sets for comparison because order can change based on SEL order
+    results = {'GOOD': {'PS1', 'PS2'}, 'FAIL': set()}
+    for line in reversed(lines):
+        m = re.search(
+            r'Power Supply (.+?) Status \| (?:Failure detected \(\)|Power Supply AC lost) \| (Asserted|Deasserted)',
+            line
+        )
+        if m and m.group(1) in PS:
+            if m.group(2) == "Asserted":
+                FAIL.add(m.group(1))
+            elif m.group(2) == "Deasserted":
+                GOOD.add(m.group(1))
+            else:
+                raise Exception(
+                    "Received abnormal PS status from ipmitool"
+                )
+            PS.remove(m.group(1))
+            if not PS:  # we've found states for all power supplies, bail
+                break
+    # if we didn't find anything in the SEL dont mess with results dict
+    print PS
+    print GOOD
+    GOOD.update(PS)
+    if GOOD:
+        results['GOOD'] = GOOD
+    if FAIL:
+        results['FAIL'] = FAIL
+    return results
