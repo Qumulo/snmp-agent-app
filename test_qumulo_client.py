@@ -67,13 +67,23 @@ SEL_SUPPLY_GOOD = \
   1a | 12/17/2017 | 20:49:35 | Power Supply PS1 Status | Failure detected () | Deasserted"""
 
 
-class TestAgent(TestCase):
-    def test_parse_sel_elist_healthy(self):
+class TestClient(TestCase):
+    def test_parse_sel_elist_ac_healthy(self):
         result = qumulo_client.parse_sel(SEL_AC_GOOD)
         target = {'GOOD': {'PS1','PS2'}, 'FAIL': set()}
         self.assertEqual(result, target)
 
-    def test_parse_sel_elist_failed(self):
+    def test_parse_sel_elist_ac_failed(self):
         result = qumulo_client.parse_sel(SEL_AC_FAILED)
         target = {'GOOD': {'PS2'}, 'FAIL': {'PS1'}}
+        self.assertEqual(result, target)
+
+    def test_parse_sel_elist_ps_healthy(self):
+        result = qumulo_client.parse_sel(SEL_SUPPLY_GOOD)
+        target = {'GOOD': {'PS1','PS2'}, 'FAIL': set()}
+        self.assertEqual(result, target)
+
+    def test_parse_sel_elist_ps_failed(self):
+        result = qumulo_client.parse_sel(SEL_SUPPLY_FAILED)
+        target = {'GOOD': {'PS1'}, 'FAIL': {'PS2'}}
         self.assertEqual(result, target)

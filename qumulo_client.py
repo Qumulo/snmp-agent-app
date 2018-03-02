@@ -97,40 +97,13 @@ class QumuloClient(object):
         @return:  TBD data structure
         '''
         # TODO: Say something useful if ipmi doesn't work
-        # ipmi_success = False
-
-        # Assume both supplies are good unless sel elist tells us different
-        results = {'GOOD': ['PS1','PS2'], 'FAIL': []}
 
         try:
             ipmi_cmd = "ipmitool -H " + ipmi_server + " -U " + self.ipmi_user + " -P " + \
                        self.ipmi_pwd + " sel elist"
             ipmi_output = subprocess.check_output(ipmi_cmd.split(" "),
                                                   stderr=subprocess.STDOUT)
-            lines = ipmi_output.split("\n")
-
-            PS = ['PS1', 'PS2']
-            GOOD = []
-            FAIL = []
-            for line in reversed(lines):
-                m = re.search(
-                    'Power Supply (.+?) Status \| Failure detected \(\) \| (Asserted|Deasserted)',
-                    line)
-                if m and m.group(1) in PS:
-                    if m.group(2) == "Asserted":
-                        FAIL.append(m.group(1))
-                    elif m.group(2) == "Deasserted":
-                        GOOD.append(m.group(1))
-                    else:
-                        raise Exception(
-                            "Received abnormal PS status from ipmitool")
-                    PS.remove(m.group(1))
-                if not PS:
-                    break
-            if GOOD:
-                results['GOOD'] = GOOD
-            if FAIL:
-                results['FAIL'] = FAIL
+            results = parse_sel(ipmi_output)
 
         except Exception, e:
             results = ["get_power_state: IPMI command exception: " + str(e)]
@@ -141,11 +114,11 @@ class QumuloClient(object):
 
 def parse_sel(text):
     lines = text.split('\n')
-    print lines
     PS = {'PS1', 'PS2'}
     GOOD = set()
     FAIL = set()
     # use sets for comparison because order can change based on SEL order
+    # assume both power supplies are good unless we find otherwise
     results = {'GOOD': {'PS1', 'PS2'}, 'FAIL': set()}
     for line in reversed(lines):
         m = re.search(
@@ -165,8 +138,6 @@ def parse_sel(text):
             if not PS:  # we've found states for all power supplies, bail
                 break
     # if we didn't find anything in the SEL dont mess with results dict
-    print PS
-    print GOOD
     GOOD.update(PS)
     if GOOD:
         results['GOOD'] = GOOD
