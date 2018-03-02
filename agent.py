@@ -242,7 +242,10 @@ class Worker(threading.Thread):
                             message,
                             "powerSupplyFailureTrap",
                             [(rfc1902.ObjectName('1.3.6.1.4.1.47017.8'),
-                              rfc1902.OctetString(node_name))]
+                              rfc1902.OctetString(node_name)),
+                             (rfc1902.ObjectName('1.3.6.1.4.1.47017.11'),
+                              rfc1902.OctetString(PS))
+                             ]
                             )
                 self.notified_power_supply_failure[node_id][PS] = True
 
