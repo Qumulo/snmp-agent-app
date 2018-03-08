@@ -5,5 +5,5 @@ pycrypto==2.6.1
 pysmi==0.0.6
 pysnmp==4.3.1
 wheel==0.24.0
-qumulo_api==2.7.7
+qumulo_api>=2.7.5
 
