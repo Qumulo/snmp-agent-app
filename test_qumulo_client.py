@@ -112,6 +112,4 @@ class TestRestClient(TestCase):
         dummy_cfg = DummyConfig()
         QC = qumulo_client.QumuloClient(dummy_cfg)
         result = QC.get_api_response(qumulo.rest.cluster.list_nodes)
-        print QC
-        print result
-        self.assertTrue(False)
+        self.assertIsNone(result)

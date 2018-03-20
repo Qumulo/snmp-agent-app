@@ -82,8 +82,11 @@ class QumuloClient(object):
             if retry:
                 attempt += 1
                 time.sleep(self.retry_delay)
-
-        return response_object.data
+        try:
+            return response_object.data
+        except AttributeError, err:
+            print "WARNING: Unexpected response to %s: %s" % (repr(api_call), err)
+            return None
 
     def get_cluster_state(self):
         self.cluster_state = self.get_api_response(qumulo.rest.cluster.list_nodes)
