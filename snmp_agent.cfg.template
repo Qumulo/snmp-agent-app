@@ -4,6 +4,8 @@ clusters:
     {
       name: "clustername"
       port:8000
+      retries:10
+      retry_delay:10
       # use persistent IP addresses instead of floating here
       # listing them in node order is helpful
       nodes: [ "10.220.200.1",

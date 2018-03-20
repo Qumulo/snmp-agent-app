@@ -16,6 +16,8 @@ class QumuloClient(object):
 
         self.port = cluster_cfg.port
         self.nodes = cluster_cfg.nodes
+        self.retries = cluster_cfg.retries
+        self.retry_delay = cluster_cfg.retry_delay
         self.user = os.getenv('SNMP_AGENT_REST_USER', 'admin')
         self.pwd = os.getenv('SNMP_AGENT_REST_PWD', 'admin')
         self.ipmi_user = os.getenv('SNMP_AGENT_IPMI_USER', 'ADMIN')
@@ -67,7 +69,7 @@ class QumuloClient(object):
         response_object = None
         retry = True
 
-        while retry and (attempt <= 10):
+        while retry and (attempt <= self.retries):
             try:
                 response_object = api_call(self.connection, self.credentials)
                 if len(response_object) == 0:
@@ -79,7 +81,7 @@ class QumuloClient(object):
 
             if retry:
                 attempt += 1
-                time.sleep(10)
+                time.sleep(self.retry_delay)
 
         return response_object.data
 

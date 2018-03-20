@@ -1,6 +1,10 @@
 # System under test
 import qumulo_client
 
+# API
+import qumulo
+
+from mock import patch, Mock
 from unittest import TestCase
 
 
@@ -67,7 +71,7 @@ SEL_SUPPLY_GOOD = \
   1a | 12/17/2017 | 20:49:35 | Power Supply PS1 Status | Failure detected () | Deasserted"""
 
 
-class TestClient(TestCase):
+class TestSelParsing(TestCase):
     def test_parse_sel_elist_ac_healthy(self):
         result = qumulo_client.parse_sel(SEL_AC_GOOD)
         target = {'GOOD': {'PS1','PS2'}, 'FAIL': set()}
@@ -87,3 +91,27 @@ class TestClient(TestCase):
         result = qumulo_client.parse_sel(SEL_SUPPLY_FAILED)
         target = {'GOOD': {'PS1'}, 'FAIL': {'PS2'}}
         self.assertEqual(result, target)
+
+
+class DummyConfig(object):
+    def __init__(self):
+        self.port = 8000
+        self.nodes = ["10.220.200.1", "10.220.200.2", ]
+        self.retries = 10
+        self.retry_delay = 0.1
+
+
+class TestRestClient(TestCase):
+    @patch('qumulo_client.QumuloClient.login')
+    @patch('qumulo.rest.cluster.get_cluster_slots_status')
+    @patch('qumulo.rest.cluster.list_nodes')
+    def test_get_api_response_none(self, MockListNodes, MockGetClusterSlotsStatus, MockQClogin):
+        MockListNodes.return_value = None
+        MockGetClusterSlotsStatus.return_value = None
+        MockQClogin.return_value = None
+        dummy_cfg = DummyConfig()
+        QC = qumulo_client.QumuloClient(dummy_cfg)
+        result = QC.get_api_response(qumulo.rest.cluster.list_nodes)
+        print QC
+        print result
+        self.assertTrue(False)
