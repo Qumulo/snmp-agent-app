@@ -232,29 +232,35 @@ class Worker(threading.Thread):
         power_states = self.client.get_power_state(ipmi_server)
 
         # notify on every failed PS we find and set notified state to True
-        for PS in power_states['FAIL']:
-            if not self.notified_power_supply_failure[node_id][PS]:
-                cluster_name = self._cfg.clusters[0].name
-                node_name = cluster_name + '-' + str(node_id + 1)
-                message = PS + " in " + node_name + " failed"
-                subject = "[ALERT] Qumulo Power Supply Failure " + node_name
-                self.notify(subject,
-                            message,
-                            "powerSupplyFailureTrap",
-                            [(rfc1902.ObjectName('1.3.6.1.4.1.47017.8'),
-                              rfc1902.OctetString(node_name)),
-                             (rfc1902.ObjectName('1.3.6.1.4.1.47017.11'),
-                              rfc1902.OctetString(PS))
-                             ]
-                            )
-                self.notified_power_supply_failure[node_id][PS] = True
+        try:
+            for PS in power_states['FAIL']:
+                if not self.notified_power_supply_failure[node_id][PS]:
+                    cluster_name = self._cfg.clusters[0].name
+                    node_name = cluster_name + '-' + str(node_id + 1)
+                    message = PS + " in " + node_name + " failed"
+                    subject = "[ALERT] Qumulo Power Supply Failure " + node_name
+                    self.notify(subject,
+                                message,
+                                "powerSupplyFailureTrap",
+                                [(rfc1902.ObjectName('1.3.6.1.4.1.47017.8'),
+                                  rfc1902.OctetString(node_name)),
+                                 (rfc1902.ObjectName('1.3.6.1.4.1.47017.11'),
+                                  rfc1902.OctetString(PS))
+                                 ]
+                                )
+                    self.notified_power_supply_failure[node_id][PS] = True
+        except TypeError, err:
+            print "WARNING: IPMI Exception, please verify IPMI config. (%s)" % str(err)
 
         # notify on every good PS we find and set those notified states to False
-        for PS in power_states['GOOD']:
-            if self.notified_power_supply_failure[node_id][PS]:
-                message = PS + " in node " + node_id + " power back to normal"
-                self.notify("Qumulo Power Supply Normal", message, "nodesClearTrap")
-                self.notified_power_supply_failure[node_id][PS] = False
+        try:
+            for PS in power_states['GOOD']:
+                if self.notified_power_supply_failure[node_id][PS]:
+                    message = PS + " in node " + node_id + " power back to normal"
+                    self.notify("Qumulo Power Supply Normal", message, "nodesClearTrap")
+                    self.notified_power_supply_failure[node_id][PS] = False
+        except TypeError, err:
+            print "WARNING: IPMI Exception, please verify IPMI config. (%s)" % str(err)
 
     def notify(self, subject, message, snmp_trap_name=None, snmp_var_binds=[]):
 

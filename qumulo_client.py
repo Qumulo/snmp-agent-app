@@ -42,7 +42,7 @@ class QumuloClient(object):
                 sys.exit(1)
             else:
                 # Create an unverified ssl context, warn that we're doing it
-                print "Warning: Creating unverified HTTPS Context!"
+                print "WARNING: Creating unverified HTTPS Context!"
                 import ssl
                 try:
                     _create_unverified_https_context = ssl._create_unverified_context
