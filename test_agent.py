@@ -58,14 +58,15 @@ email: {
 }
 """
 
-test_cfg_file = StringIO(test_config)
-
 
 class TestAgent(TestCase):
     @patch('qumulo_client.QumuloClient.login')
     @patch('pysnmp.carrier.asynsock.dgram.udp.UdpTransport.openServerMode')
     @patch('pysnmp.entity.config.addSocketTransport')
     def test_check_power_no_ipmi(self, MockAddSocketTransport, MockOpenServerMode, MockQClogin):
+        """Test that lack of ipmi connectivity warns, but does not break"""
+        test_cfg_file = StringIO(test_config)
+
         MockAddSocketTransport.return_value = None
         MockOpenServerMode.return_value = None
         MockQClogin.return_value = None
@@ -81,4 +82,34 @@ class TestAgent(TestCase):
             agent.setTrapReceiver(cfg.snmp.snmp_trap_receiver, 'traps')
 
         W = testagent.Worker(agent, mib, cfg)
-        W.check_power('127.0.0.1', '1')
+        W.check_power('127.0.0.1', 1)
+
+    @patch('agent.SNMPAgent.sendTrap')
+    @patch('qumulo_client.QumuloClient.get_power_state')
+    @patch('qumulo_client.QumuloClient.login')
+    @patch('pysnmp.carrier.asynsock.dgram.udp.UdpTransport.openServerMode')
+    @patch('pysnmp.entity.config.addSocketTransport')
+    def test_check_power_good(self, MockAddSocketTransport, MockOpenServerMode, MockQClogin, MockGetPowerState, MockSendTrap):
+        """Test that notification of PS recovery does not throw exception"""
+        test_cfg_file = StringIO(test_config)
+
+        MockAddSocketTransport.return_value = None
+        MockOpenServerMode.return_value = None
+        MockQClogin.return_value = None
+        MockGetPowerState.return_value = {'GOOD': {'PS1', 'PS2'}, 'FAIL': set()}
+        MockSendTrap.return_value = None
+        cfg = Config(test_cfg_file)
+
+        mib = testagent.Mib()
+        objects = [
+            testagent.MibObject('QUMULO-MIB', 'testDescription', mib.getTestDescription),
+            testagent.MibObject('QUMULO-MIB', 'testCount', mib.getTestCount)]
+        agent = testagent.SNMPAgent(objects)
+
+        if cfg.snmp.enabled:
+            agent.setTrapReceiver(cfg.snmp.snmp_trap_receiver, 'traps')
+
+        W = testagent.Worker(agent, mib, cfg)
+        W.notified_power_supply_failure[0]['PS1'] = True
+        print W.notified_power_supply_failure
+        W.check_power('127.0.0.1', 0)

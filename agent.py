@@ -231,12 +231,13 @@ class Worker(threading.Thread):
     def check_power(self, ipmi_server, node_id):
         power_states = self.client.get_power_state(ipmi_server)
 
+        cluster_name = self._cfg.clusters[0].name
+        node_name = cluster_name + '-' + str(node_id + 1)
+
         # notify on every failed PS we find and set notified state to True
         try:
             for PS in power_states['FAIL']:
                 if not self.notified_power_supply_failure[node_id][PS]:
-                    cluster_name = self._cfg.clusters[0].name
-                    node_name = cluster_name + '-' + str(node_id + 1)
                     message = PS + " in " + node_name + " failed"
                     subject = "[ALERT] Qumulo Power Supply Failure " + node_name
                     self.notify(subject,
@@ -256,7 +257,7 @@ class Worker(threading.Thread):
         try:
             for PS in power_states['GOOD']:
                 if self.notified_power_supply_failure[node_id][PS]:
-                    message = PS + " in node " + node_id + " power back to normal"
+                    message = PS + " in " + node_name + " power back to normal"
                     self.notify("Qumulo Power Supply Normal", message, "nodesClearTrap")
                     self.notified_power_supply_failure[node_id][PS] = False
         except TypeError, err:
