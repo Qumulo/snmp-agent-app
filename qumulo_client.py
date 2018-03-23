@@ -90,11 +90,17 @@ class QumuloClient(object):
 
     def get_cluster_state(self):
         self.cluster_state = self.get_api_response(qumulo.rest.cluster.list_nodes)
-        self.offline_nodes = [ s for s in self.cluster_state if s['node_status'] == 'offline' ]
+        if self.cluster_state:
+            self.offline_nodes = [ s for s in self.cluster_state if s['node_status'] == 'offline' ]
+        else:
+            print "WARNING: Unexpected response from list_nodes() %s" % str(self.cluster_state)
 
     def get_drive_states(self):
         self.drive_states = self.get_api_response(qumulo.rest.cluster.get_cluster_slots_status)
-        self.dead_drives = [ d for d in self.drive_states if d['state'] == 'dead' ]
+        if self.cluster_state:
+            self.dead_drives = [ d for d in self.drive_states if d['state'] == 'dead' ]
+        else:
+            print "WARNING: Unexpected response from get_cluster_slots_status() %s" % str(self.drive_states)
 
     def get_power_state(self, ipmi_server):
         '''

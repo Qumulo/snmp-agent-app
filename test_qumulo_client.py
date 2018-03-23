@@ -113,3 +113,21 @@ class TestRestClient(TestCase):
         QC = qumulo_client.QumuloClient(dummy_cfg)
         result = QC.get_api_response(qumulo.rest.cluster.list_nodes)
         self.assertIsNone(result)
+
+    @patch('qumulo_client.QumuloClient.get_api_response')
+    def test_get_cluster_state_response_none(self, MockGetAPIResponse):
+        """don't throw a TypeError when get_cluster_state() receives None"""
+        MockGetAPIResponse.return_value = None
+        dummy_cfg = DummyConfig()
+        QC = qumulo_client.QumuloClient(dummy_cfg)
+        result = QC.get_cluster_state()
+        self.assertIsNone(result)
+
+    @patch('qumulo_client.QumuloClient.get_api_response')
+    def test_get_drive_states_response_none(self, MockGetAPIResponse):
+        """don't throw a TypeError when get_cluster_state() receives None"""
+        MockGetAPIResponse.return_value = None
+        dummy_cfg = DummyConfig()
+        QC = qumulo_client.QumuloClient(dummy_cfg)
+        result = QC.get_drive_states()
+        self.assertIsNone(result)
