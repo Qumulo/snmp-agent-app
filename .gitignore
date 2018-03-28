@@ -1,2 +1,3 @@
 *.pyc
 .idea
+snmp_agent.cfg

@@ -3,6 +3,7 @@ from pysnmp import debug
 from pysnmp.entity.rfc3413 import cmdrsp, context, ntforg
 from pysnmp.carrier.asynsock.dgram import udp
 from pysnmp.smi import builder
+from pysnmp.proto import rfc1902
 
 import collections
 from config import Config
@@ -127,7 +128,6 @@ class SNMPAgent(object):
         cmdrsp.NextCommandResponder(self._snmpEngine, self._snmpContext)
         cmdrsp.BulkCommandResponder(self._snmpEngine, self._snmpContext)
 
-
     def setTrapReceiver(self, host, community):
         """Send traps to the host using community string community
         """
@@ -145,7 +145,6 @@ class SNMPAgent(object):
             self._snmpEngine, 'test-notification', 'my-filter',
             'all-my-managers', 'trap')
 
-
     def sendTrap(self, notification, trap_name, var_binds):
         ntfOrg = ntforg.NotificationOriginator(self._snmpContext)
 
@@ -153,7 +152,6 @@ class SNMPAgent(object):
             self._snmpEngine,
             'test-notification',
             ( 'QUMULO-MIB', trap_name ), var_binds)
-
 
     def serve_forever(self):
         print "Starting agent"
@@ -163,6 +161,7 @@ class SNMPAgent(object):
         except:
             self._snmpEngine.transportDispatcher.closeDispatcher()
             raise
+
 
 class Worker(threading.Thread):
     """Just to demonstrate updating the MIB
@@ -176,18 +175,22 @@ class Worker(threading.Thread):
         self._cfg = cfg
         self.setDaemon(True)
 
-        self.client = QumuloClient(cfg.clusters[0]) # only one cluster for now
+        self.client = QumuloClient(cfg.clusters[0])  # only one cluster for now
         self.notified_offline = False
         self.notified_dead_drives = False
-        self.notified_power_supply_failure = False
+        # Use an array of dictionaries to track per-node PS notify states
+        self.notified_power_supply_failure = \
+            [{'PS1': False, 'PS2': False}
+             for node in cfg.clusters[0].ipmi.ipmi_servers]
+        # print self.notified_power_supply_failure
 
         self.snmp_enabled = cfg.snmp.enabled
         self.email_enabled = cfg.email.enabled
-        self.ipmi_enabled = cfg.ipmi.enabled
+        self.ipmi_enabled = cfg.clusters[0].ipmi.enabled
 
         if self.email_enabled:
-           self.email_acct = os.getenv('SNMP_AGENT_EMAIL_ACCT')
-           self.email_pwd = os.getenv('SNMP_AGENT_EMAIL_PWD')
+            self.email_acct = os.getenv('SNMP_AGENT_EMAIL_ACCT')
+            self.email_pwd = os.getenv('SNMP_AGENT_EMAIL_PWD')
 
     def check_nodes(self):
         self.client.get_cluster_state()
@@ -225,50 +228,70 @@ class Worker(threading.Thread):
                 self.notified_dead_drives = False
                 self.notify("Qumulo Drives Back Online", "All nodes back online", "nodesClearTrap")
 
-    def check_power(self, ipmi_server):
-        power_state = self.client.get_power_state(self._cfg['clusters'][0].ipmi.ipmi_server)
+    def check_power(self, ipmi_server, node_id):
+        power_states = self.client.get_power_state(ipmi_server)
 
-        m = re.search("Failure", power_state[0])
-        if m:
-            if not self.notified_power_supply_failure:
-                self.notify("Qumulo Power Supply Failure", power_state[0], "powerSupplyFailureTrap")
-                self.notified_power_supply_failure = True
-        else:
-            if self.notified_power_supply_failure: # we're back to normal
-                self.notified_power_supply_failure = False
-                self.notify("Qumulo Cluster Back Online", "Qumulo Cluster power back to normal", "nodesClearTrap")
+        cluster_name = self._cfg.clusters[0].name
+        node_name = cluster_name + '-' + str(node_id + 1)
 
-    def notify(self, subject, message, snmp_trap_name = None):
+        # notify on every failed PS we find and set notified state to True
+        try:
+            for PS in power_states['FAIL']:
+                if not self.notified_power_supply_failure[node_id][PS]:
+                    message = PS + " in " + node_name + " failed"
+                    subject = "[ALERT] Qumulo Power Supply Failure " + node_name
+                    self.notify(subject,
+                                message,
+                                "powerSupplyFailureTrap",
+                                [(rfc1902.ObjectName('1.3.6.1.4.1.47017.8'),
+                                  rfc1902.OctetString(node_name)),
+                                 (rfc1902.ObjectName('1.3.6.1.4.1.47017.11'),
+                                  rfc1902.OctetString(PS))
+                                 ]
+                                )
+                    self.notified_power_supply_failure[node_id][PS] = True
+        except TypeError, err:
+            print "WARNING: IPMI Exception, please verify IPMI config. (%s)" % str(err)
 
-        print(message)
+        # notify on every good PS we find and set those notified states to False
+        try:
+            for PS in power_states['GOOD']:
+                if self.notified_power_supply_failure[node_id][PS]:
+                    message = PS + " in " + node_name + " power back to normal"
+                    self.notify("Qumulo Power Supply Normal", message, "nodesClearTrap")
+                    self.notified_power_supply_failure[node_id][PS] = False
+        except TypeError, err:
+            print "WARNING: IPMI Exception, please verify IPMI config. (%s)" % str(err)
+
+    def notify(self, subject, message, snmp_trap_name=None, snmp_var_binds=[]):
+
+        print("NOTIFICATION: " + message)
 
         if self.snmp_enabled:
             print("Sending trap")
-            self._agent.sendTrap(message, snmp_trap_name, ())
+            self._agent.sendTrap(message, snmp_trap_name, snmp_var_binds)
 
         if self.email_enabled:
             print("Sending email")
             self.send_email(subject, message)
 
-
     def check_cluster_status(self):
-
         # Check IPMI
-        if self._cfg.ipmi.enabled:
-            ipmi_server = self._cfg['clusters'][0].ipmi.ipmi_server
-            self.check_power(ipmi_server, self._cfg.snmp.enabled, self._email.enabled)
+        if self._cfg.clusters[0].ipmi.enabled:
+            ipmi_servers = self._cfg.clusters[0].ipmi.ipmi_servers
+            for ipmi_server in ipmi_servers:
+                self.check_power(ipmi_server, node_id=list(ipmi_servers).index(ipmi_server))
 
-        if self.client.credentials != None:
+        if self.client.credentials is not None:
             self.check_nodes()
             self.check_drives()
-        else: # we're offline
+        else:  # we're offline
             if not self.notified_offline:
                 print "Error connecting to Qumulo Cluster REST Server"
                 self.notify("Qumulo Cluster offline", "Error connecting to Qumulo Cluster REST Server", "nodeDownTrap")
                 self.notified_offline = True
-            else: # retry login
+            else:  # retry login
                 self.client.login()
-
 
     def send_email(self, subject, body):
         '''Send an email message to a list of recipients'''
@@ -286,11 +309,9 @@ class Worker(threading.Thread):
             server.sendmail(msg['From'], msg['To'], msg.as_string())
             server.quit()
 
-
         except Exception, excpt:
             print("Failed to send email (Subject: %s) (%s)" %
                     (subject, excpt))
-
 
     def run(self):
         while True:
@@ -316,4 +337,4 @@ if __name__ == '__main__':
     try:
         agent.serve_forever()
     except KeyboardInterrupt:
-         print "Shutting down"
+        print "Shutting down"
