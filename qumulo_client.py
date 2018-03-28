@@ -1,4 +1,3 @@
-import time
 import os
 # subprocess is for shelling out to run ipmi commands
 import re
@@ -7,13 +6,11 @@ import sys
 
 import qumulo.lib.auth
 import qumulo.lib.request
-import qumulo.rest.fs as fs
 
 
 class QumuloClient(object):
     ''' class wrapper for REST API cmd so that we can new them up in tests '''
     def __init__(self, cluster_cfg):
-
         self.port = cluster_cfg.port
         self.nodes = cluster_cfg.nodes
         self.retries = cluster_cfg.retries
@@ -64,29 +61,21 @@ class QumuloClient(object):
         self.credentials = qumulo.lib.auth.Credentials.from_login_response(login_results)
 
     def get_api_response(self, api_call):
-
-        attempt = 0
         response_object = None
-        retry = True
 
-        while retry and (attempt <= self.retries):
-            try:
-                response_object = api_call(self.connection, self.credentials)
-                if len(response_object) == 0:
-                    retry = True
-                else:
-                    retry = False
-            except Exception, excpt:
-                retry = True
-
-            if retry:
-                attempt += 1
-                time.sleep(self.retry_delay)
         try:
+            response_object = api_call(self.connection, self.credentials)
+            return response_object.data
+        except qumulo.lib.request.RequestError, err:
+            # bearer token most likely expired, retry login then api_call again
+            self.login()
+            response_object = api_call(self.connection, self.credentials)
             return response_object.data
         except AttributeError, err:
-            print "WARNING: Unexpected response to %s: %s" % (repr(api_call), err)
-            return None
+            # We got none back, which isn't expected
+            print "WARNING: Unexpected response to %s: %s" % \
+                  (repr(api_call), err)
+            return response_object
 
     def get_cluster_state(self):
         self.cluster_state = self.get_api_response(qumulo.rest.cluster.list_nodes)
