@@ -131,3 +131,12 @@ class TestRestClient(TestCase):
         QC = qumulo_client.QumuloClient(dummy_cfg)
         result = QC.get_drive_states()
         self.assertIsNone(result)
+
+    def test_get_api_response_credentials_timeout(self):
+        """instantiate client, blow away credentials, assert api call works"""
+        dummy_cfg = DummyConfig()
+        QC = qumulo_client.QumuloClient(dummy_cfg)
+        # no credentials behave the same way as expired credentials
+        QC.credentials = None
+        response = QC.get_api_response(qumulo.rest.cluster.list_nodes)
+        self.assertIsNotNone(response)
