@@ -6,6 +6,7 @@ import sys
 
 import qumulo.lib.auth
 import qumulo.lib.request
+import qumulo.rest
 
 
 class QumuloClient(object):
@@ -13,8 +14,6 @@ class QumuloClient(object):
     def __init__(self, cluster_cfg):
         self.port = cluster_cfg.port
         self.nodes = cluster_cfg.nodes
-        self.retries = cluster_cfg.retries
-        self.retry_delay = cluster_cfg.retry_delay
         self.user = os.getenv('SNMP_AGENT_REST_USER', 'admin')
         self.pwd = os.getenv('SNMP_AGENT_REST_PWD', 'admin')
         self.ipmi_user = os.getenv('SNMP_AGENT_IPMI_USER', 'ADMIN')
