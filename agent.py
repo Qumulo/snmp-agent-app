@@ -14,6 +14,7 @@ import re
 import smtplib
 import threading
 import time
+import logging
 
 from qumulo_client import QumuloClient
 
@@ -154,7 +155,7 @@ class SNMPAgent(object):
             ( 'QUMULO-MIB', trap_name ), var_binds)
 
     def serve_forever(self):
-        print "Starting agent"
+        log.info("Starting agent")
         self._snmpEngine.transportDispatcher.jobStarted(1)
         try:
            self._snmpEngine.transportDispatcher.runDispatcher()
@@ -251,7 +252,8 @@ class Worker(threading.Thread):
                                 )
                     self.notified_power_supply_failure[node_id][PS] = True
         except TypeError, err:
-            print "WARNING: IPMI Exception, please verify IPMI config. (%s)" % str(err)
+            log.warn("WARNING: IPMI Exception, please verify IPMI config. (%s)"
+                     % str(err))
 
         # notify on every good PS we find and set those notified states to False
         try:
@@ -261,18 +263,19 @@ class Worker(threading.Thread):
                     self.notify("Qumulo Power Supply Normal", message, "nodesClearTrap")
                     self.notified_power_supply_failure[node_id][PS] = False
         except TypeError, err:
-            print "WARNING: IPMI Exception, please verify IPMI config. (%s)" % str(err)
+            log.warn("WARNING: IPMI Exception, please verify IPMI config. (%s)"
+                     % str(err))
 
     def notify(self, subject, message, snmp_trap_name=None, snmp_var_binds=[]):
 
-        print("NOTIFICATION: " + message)
+        log.warn(message)
 
         if self.snmp_enabled:
-            print("Sending trap")
+            log.info("Sending trap")
             self._agent.sendTrap(message, snmp_trap_name, snmp_var_binds)
 
         if self.email_enabled:
-            print("Sending email")
+            log.info("Sending email")
             self.send_email(subject, message)
 
     def check_cluster_status(self):
@@ -287,7 +290,7 @@ class Worker(threading.Thread):
             self.check_drives()
         else:  # we're offline
             if not self.notified_offline:
-                print "Error connecting to Qumulo Cluster REST Server"
+                log.warn("Error connecting to Qumulo Cluster REST Server")
                 self.notify("Qumulo Cluster offline", "Error connecting to Qumulo Cluster REST Server", "nodeDownTrap")
                 self.notified_offline = True
             else:  # retry login
@@ -310,8 +313,8 @@ class Worker(threading.Thread):
             server.quit()
 
         except Exception, excpt:
-            print("Failed to send email (Subject: %s) (%s)" %
-                    (subject, excpt))
+            log.warn(("Failed to send email (Subject: %s) (%s)" %
+                    (subject, excpt)))
 
     def run(self):
         while True:
@@ -319,12 +322,30 @@ class Worker(threading.Thread):
             self._mib.setTestCount(mib.getTestCount()+1)
             self.check_cluster_status()
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     # see if we can read config
     f = file('snmp_agent.cfg')
     cfg = Config(f)
 
+    # Logging Settings
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s - '
+                               '%(name)s - '
+                               '%(levelname)s - '
+                               '%(message)s')
+    log = logging.getLogger('agent')
+    log.setLevel(logging.DEBUG)
+
+    fh = logging.FileHandler('agent.log')
+    fh.setLevel(logging.DEBUG)
+
+    f = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    fh.setFormatter(f)
+    log.addHandler(fh)
+
+    # Set up MIB
     mib = Mib()
     objects = [MibObject('QUMULO-MIB', 'testDescription', mib.getTestDescription),
                 MibObject('QUMULO-MIB', 'testCount', mib.getTestCount)]
@@ -333,8 +354,9 @@ if __name__ == '__main__':
     if cfg.snmp.enabled:
         agent.setTrapReceiver(cfg.snmp.snmp_trap_receiver, 'traps')
 
+    # Start polling worker thread and agent loop
     Worker(agent, mib, cfg).start()
     try:
         agent.serve_forever()
     except KeyboardInterrupt:
-        print "Shutting down"
+        log.info("Shutting down")
