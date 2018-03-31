@@ -5,14 +5,20 @@ import subprocess
 import sys
 import logging
 
+from config import Config
+
 import qumulo.lib.auth
 import qumulo.lib.request
 import qumulo.rest
 
 
+# Grab config
+f = file('snmp_agent.cfg')
+cfg = Config(f)
+log_level = getattr(logging, cfg.log.level)
 # Logging Settings
 log = logging.getLogger("qumulo_client")
-log.setLevel(logging.DEBUG)
+log.setLevel(log_level)
 
 
 class QumuloClient(object):

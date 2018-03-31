@@ -329,16 +329,17 @@ if __name__ == '__main__':
     cfg = Config(f)
 
     # Logging Settings
-    logging.basicConfig(level=logging.DEBUG,
+    log_level = getattr(logging, cfg.log.level)
+    logging.basicConfig(level=log_level,
                         format='%(asctime)s - '
                                '%(name)s - '
                                '%(levelname)s - '
                                '%(message)s')
-    log = logging.getLogger('agent')
-    log.setLevel(logging.DEBUG)
+    log = logging.getLogger("agent")
+    log.setLevel(log_level)
 
-    fh = logging.FileHandler('agent.log')
-    fh.setLevel(logging.DEBUG)
+    fh = logging.FileHandler(cfg.log.name)
+    fh.setLevel(log_level)
 
     f = logging.Formatter(
         '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
