@@ -1,5 +1,4 @@
 from pysnmp.entity import engine, config
-from pysnmp import debug
 from pysnmp.entity.rfc3413 import cmdrsp, context, ntforg
 from pysnmp.carrier.asynsock.dgram import udp
 from pysnmp.smi import builder
@@ -10,18 +9,23 @@ from config import Config
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 import os
-import re
 import smtplib
 import threading
 import time
+import logging
 
 from qumulo_client import QumuloClient
 
-#can be useful
-# debug.setLogger(debug.Debug('all'))
+
+LOG_FORMAT = '%(asctime)s [%(process)d] %(levelname)8s %(message)s ' \
+             '[%(name)s.%(funcName)s %(lineno)s]'
+
+CON_FORMAT = '%(asctime)s %(levelname)8s %(message)s [%(name)s]'
+
 
 MibObject = collections.namedtuple('MibObject', ['mibName',
                                    'objectType', 'valueFunc'])
+
 
 class Mib(object):
     """Stores the data we want to serve.
@@ -81,6 +85,7 @@ class SNMPAgent(object):
         mibObjects - a list of MibObject tuples that this agent
         will serve
         """
+        self.logger = logging.getLogger('agent.SNMPAgent')
 
         #each SNMP-based application has an engine
         self._snmpEngine = engine.SnmpEngine()
@@ -154,7 +159,7 @@ class SNMPAgent(object):
             ( 'QUMULO-MIB', trap_name ), var_binds)
 
     def serve_forever(self):
-        print "Starting agent"
+        self.logger.info("Starting agent")
         self._snmpEngine.transportDispatcher.jobStarted(1)
         try:
            self._snmpEngine.transportDispatcher.runDispatcher()
@@ -170,6 +175,7 @@ class Worker(threading.Thread):
 
     def __init__(self, agent, mib, cfg):
         threading.Thread.__init__(self)
+        self.logger = logging.getLogger('agent.Worker')
         self._agent = agent
         self._mib = mib
         self._cfg = cfg
@@ -251,7 +257,8 @@ class Worker(threading.Thread):
                                 )
                     self.notified_power_supply_failure[node_id][PS] = True
         except TypeError, err:
-            print "WARNING: IPMI Exception, please verify IPMI config. (%s)" % str(err)
+            self.logger.warn("WARNING: IPMI Exception, please verify IPMI config. (%s)"
+                     % str(err))
 
         # notify on every good PS we find and set those notified states to False
         try:
@@ -261,18 +268,19 @@ class Worker(threading.Thread):
                     self.notify("Qumulo Power Supply Normal", message, "nodesClearTrap")
                     self.notified_power_supply_failure[node_id][PS] = False
         except TypeError, err:
-            print "WARNING: IPMI Exception, please verify IPMI config. (%s)" % str(err)
+            self.logger.warn("WARNING: IPMI Exception, please verify IPMI config. (%s)"
+                     % str(err))
 
     def notify(self, subject, message, snmp_trap_name=None, snmp_var_binds=[]):
 
-        print("NOTIFICATION: " + message)
+        self.logger.warn(message)
 
         if self.snmp_enabled:
-            print("Sending trap")
+            self.logger.info("Sending trap")
             self._agent.sendTrap(message, snmp_trap_name, snmp_var_binds)
 
         if self.email_enabled:
-            print("Sending email")
+            self.logger.info("Sending email")
             self.send_email(subject, message)
 
     def check_cluster_status(self):
@@ -287,7 +295,7 @@ class Worker(threading.Thread):
             self.check_drives()
         else:  # we're offline
             if not self.notified_offline:
-                print "Error connecting to Qumulo Cluster REST Server"
+                self.logger.warn("Error connecting to Qumulo Cluster REST Server")
                 self.notify("Qumulo Cluster offline", "Error connecting to Qumulo Cluster REST Server", "nodeDownTrap")
                 self.notified_offline = True
             else:  # retry login
@@ -310,8 +318,8 @@ class Worker(threading.Thread):
             server.quit()
 
         except Exception, excpt:
-            print("Failed to send email (Subject: %s) (%s)" %
-                    (subject, excpt))
+            self.logger.warn(("Failed to send email (Subject: %s) (%s)" %
+                    (subject, excpt)))
 
     def run(self):
         while True:
@@ -319,12 +327,24 @@ class Worker(threading.Thread):
             self._mib.setTestCount(mib.getTestCount()+1)
             self.check_cluster_status()
 
-if __name__ == '__main__':
 
-    # see if we can read config
+if __name__ == '__main__':
+    # read config
     f = file('snmp_agent.cfg')
     cfg = Config(f)
 
+    # Logging Settings
+    log_level = getattr(logging, cfg.log.level)
+    logging.basicConfig(level=log_level, format=CON_FORMAT)
+    log = logging.getLogger()
+
+    # make a file handler, attach a formatter, and add it to the root logger
+    fh = logging.FileHandler(cfg.log.name)
+    fh.setLevel(log_level)
+    fh.setFormatter(logging.Formatter(LOG_FORMAT))
+    log.addHandler(fh)
+
+    # Set up MIB
     mib = Mib()
     objects = [MibObject('QUMULO-MIB', 'testDescription', mib.getTestDescription),
                 MibObject('QUMULO-MIB', 'testCount', mib.getTestCount)]
@@ -333,8 +353,9 @@ if __name__ == '__main__':
     if cfg.snmp.enabled:
         agent.setTrapReceiver(cfg.snmp.snmp_trap_receiver, 'traps')
 
+    # Start polling worker thread and agent loop
     Worker(agent, mib, cfg).start()
     try:
         agent.serve_forever()
     except KeyboardInterrupt:
-        print "Shutting down"
+        log.info("Shutting down")

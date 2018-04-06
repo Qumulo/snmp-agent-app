@@ -31,6 +31,13 @@ clusters:
     }
 ]
 
+# Specify log filename (with optional path) and level
+log: {
+    name: "agent.log"
+    # DEBUG, INFO, etc
+    level: "DEBUG"
+}
+
 # Specify IP address of SNMP trap receiver
 snmp: {
     enabled: True
