@@ -12,18 +12,10 @@ import qumulo.lib.request
 import qumulo.rest
 
 
-# Grab config
-f = file('snmp_agent.cfg')
-cfg = Config(f)
-log_level = getattr(logging, cfg.log.level)
-# Logging Settings
-log = logging.getLogger("qumulo_client")
-log.setLevel(log_level)
-
-
 class QumuloClient(object):
     ''' class wrapper for REST API cmd so that we can new them up in tests '''
     def __init__(self, cluster_cfg):
+        self.logger = logging.getLogger('qumulo_client.QumuloClient')
         self.port = cluster_cfg.port
         self.nodes = cluster_cfg.nodes
         self.user = os.getenv('SNMP_AGENT_REST_USER', 'admin')
@@ -38,20 +30,20 @@ class QumuloClient(object):
         self.offline_nodes = []
         self.dead_drives = []
 
-        log.debug("Logging in to Qumulo cluster via REST")
+        self.logger.debug("Logging in to Qumulo cluster via REST")
         self.login()
 
     def login(self):
         try:
             self.get_credentials()
         except Exception, excpt:
-            log.warn("Problem connecting to the REST server: %s" % excpt)
+            logging.warn("Problem connecting to the REST server: %s" % excpt)
             if 'certificate verify failed' not in str(excpt):
-                log.critical("Fatal error, exiting...")
+                self.logger.critical("Fatal error, exiting...")
                 sys.exit(1)
             else:
                 # Create an unverified ssl context, warn that we're doing it
-                log.warn("Creating unverified HTTPS Context!")
+                self.logger.warn("Creating unverified HTTPS Context!")
                 import ssl
                 try:
                     _create_unverified_https_context = ssl._create_unverified_context
@@ -85,7 +77,7 @@ class QumuloClient(object):
             return response_object.data
         except AttributeError, err:
             # We got none back, which isn't expected
-            log.warn("Unexpected response to %s: %s" % \
+            self.logger.warn("Unexpected response to %s: %s" % \
                   (repr(api_call), err))
             return response_object
 
@@ -94,14 +86,14 @@ class QumuloClient(object):
         if self.cluster_state:
             self.offline_nodes = [ s for s in self.cluster_state if s['node_status'] == 'offline' ]
         else:
-            log.warn("Unexpected response from list_nodes() %s" % str(self.cluster_state))
+            self.logger.warn("Unexpected response from list_nodes() %s" % str(self.cluster_state))
 
     def get_drive_states(self):
         self.drive_states = self.get_api_response(qumulo.rest.cluster.get_cluster_slots_status)
         if self.cluster_state:
             self.dead_drives = [ d for d in self.drive_states if d['state'] == 'dead' ]
         else:
-            log.warn("Unexpected response from get_cluster_slots_status() %s" % str(self.drive_states))
+            self.logger.warn("Unexpected response from get_cluster_slots_status() %s" % str(self.drive_states))
 
     def get_power_state(self, ipmi_server):
         '''
