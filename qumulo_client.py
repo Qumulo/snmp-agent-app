@@ -12,6 +12,10 @@ import qumulo.lib.request
 import qumulo.rest
 
 
+class IPMIError(Exception):
+    pass
+
+
 class QumuloClient(object):
     ''' class wrapper for REST API cmd so that we can new them up in tests '''
     def __init__(self, cluster_cfg):
@@ -96,55 +100,44 @@ class QumuloClient(object):
             self.logger.warn("Unexpected response from get_cluster_slots_status() %s" % str(self.drive_states))
 
     def get_power_state(self, ipmi_server):
-        '''
-        use ipmi to determine if any power supplies have failed.
-        @return:  TBD data structure
-        '''
-        # TODO: Say something useful if ipmi doesn't work
+        """use ipmi to determine if any power supplies have failed."""
+        ipmi_query = ('sdr', 'type', 'Power Supply')
+        output = self.get_ipmi_response(ipmi_server, ipmi_query)
+        self.logger.debug('\n' + output)
 
-        try:
-            ipmi_cmd = "ipmitool -H " + ipmi_server + " -U " + self.ipmi_user + " -P " + \
-                       self.ipmi_pwd + " sel elist"
-            ipmi_output = subprocess.check_output(ipmi_cmd.split(" "),
-                                                  stderr=subprocess.STDOUT)
-            results = parse_sel(ipmi_output)
+        if "IPMI command exception" in output:
+            raise IPMIError(str(output))
 
-        except Exception, e:
-            results = ["get_power_state: IPMI command exception: " + str(e)]
+        results = parse_sdr_ps(output)
 
         sys.stdout.flush()
         return results
 
+    def get_ipmi_response(self, ipmi_server, ipmi_query):
+        try:
+            ipmi_cmdlist = ['ipmitool', '-H', ipmi_server, '-U', self.ipmi_user,
+                            '-P', self.ipmi_pwd]
+            ipmi_cmdlist.extend(ipmi_query)
+            ipmi_output = subprocess.check_output(ipmi_cmdlist,
+                                                  stderr=subprocess.STDOUT)
+            results = ipmi_output
+        except Exception, e:
+            results = "IPMI command exception: " + str(e)
+        return results
 
-def parse_sel(text):
-    lines = text.split('\n')
+
+def parse_sdr_ps(text):
     PS = {'PS1', 'PS2'}
-    GOOD = set()
-    FAIL = set()
-    # use sets for comparison because order can change based on SEL order
-    # assume both power supplies are good unless we find otherwise
-    results = {'GOOD': {'PS1', 'PS2'}, 'FAIL': set()}
-    for line in reversed(lines):
-        m = re.search(
-            r'Power Supply (.+?) Status \| (?:Failure detected \(\)|Power Supply AC lost) \| (Asserted|Deasserted)',
-            line
-        )
+    status = {'GOOD': set(), 'FAIL': set()}
+    lines = text.split('\n')
+    for line in lines:
+        m = re.search(r'(.+?) Status.+Presence detected,?\s?(.+?)?$', line)
         if m and m.group(1) in PS:
-            if m.group(2) == "Asserted":
-                FAIL.add(m.group(1))
-            elif m.group(2) == "Deasserted":
-                GOOD.add(m.group(1))
+            if m.group(2):
+                status['FAIL'].add(m.group(1))
+                PS.remove(m.group(1))
             else:
-                raise Exception(
-                    "Received abnormal PS status from ipmitool"
-                )
-            PS.remove(m.group(1))
-            if not PS:  # we've found states for all power supplies, bail
-                break
-    # if we didn't find anything in the SEL dont mess with results dict
-    GOOD.update(PS)
-    if GOOD:
-        results['GOOD'] = GOOD
-    if FAIL:
-        results['FAIL'] = FAIL
-    return results
+                status['GOOD'].add(m.group(1))
+                PS.remove(m.group(1))
+    return status
+

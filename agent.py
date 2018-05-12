@@ -14,7 +14,7 @@ import threading
 import time
 import logging
 
-from qumulo_client import QumuloClient
+from qumulo_client import QumuloClient, IPMIError
 
 
 LOG_FORMAT = '%(asctime)s [%(process)d] %(levelname)8s %(message)s ' \
@@ -235,7 +235,11 @@ class Worker(threading.Thread):
                 self.notify("Qumulo Drives Back Online", "All nodes back online", "nodesClearTrap")
 
     def check_power(self, ipmi_server, node_id):
-        power_states = self.client.get_power_state(ipmi_server)
+        try:
+            power_states = self.client.get_power_state(ipmi_server)
+        except IPMIError, e:
+            self.logger.warning(str(e))
+            power_states = {'GOOD': {'PS2', 'PS1'}, 'FAIL': set()}
 
         cluster_name = self._cfg.clusters[0].name
         node_name = cluster_name + '-' + str(node_id + 1)
