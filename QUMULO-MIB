@@ -8,14 +8,17 @@ IMPORTS
 
 
 qumuloModule MODULE-IDENTITY
-    LAST-UPDATED "200406150000Z"
+    LAST-UPDATED "201906130000Z"
     ORGANIZATION "www.qumulo.com"
     CONTACT-INFO
-	 "postal:   Michael Murray
+	 "postal:   Mike Bott
                     1501 4th Ave, Ste 1600
                     Seattle WA 98101
 
-          email:    mmurray@qumulo.com"
+          email:    mike@qumulo.com"
+    DESCRIPTION
+	"Updated module identity"
+    REVISION     "201906130000Z"
     DESCRIPTION
 	"Qumulo MIB objects for SNMP agent module"
     REVISION     "200406150000Z"
