@@ -1,4 +1,7 @@
-# Qumulo SNMP Agent Readme
+# DEPRECATED: Qumulo SNMP Agent Readme
+This repository has been deprecated as it is not well-maintained, tested, and will not be converted to support Python 3.  Since Qumulo will not be supporting Python 2.7 at the end of this quarter, this repository will subsequently be deleted.
+
+[![No Maintenance Intended](http://unmaintained.tech/badge.svg)](http://unmaintained.tech/)
 
 The Qumulo SNMP Agent is an SNMP agent for Qumulo clusters built using [PySNMP](http://pysnmp.sourceforge.net/).
 
